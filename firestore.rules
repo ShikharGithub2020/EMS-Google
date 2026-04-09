@@ -1,0 +1,192 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: employees
+// Document ID: {uid}
+// Fields:
+//   - uid: string (required, immutable)
+//   - name: string (required)
+//   - email: string (required, email format)
+//   - role: string (required, enum: ['admin', 'manager', 'employee'])
+//   - department: string (optional)
+//   - status: string (required, enum: ['onboarding', 'active', 'inactive'])
+//   - joinDate: string (required, ISO 8601)
+//   - managerId: string (optional)
+//   - photoURL: string (optional)
+//
+// Collection: leaves
+// Document ID: {leaveId}
+// Fields:
+//   - employeeId: string (required, immutable)
+//   - type: string (required, enum: ['annual', 'sick', 'unpaid', 'other'])
+//   - startDate: string (required, ISO 8601)
+//   - endDate: string (required, ISO 8601)
+//   - status: string (required, enum: ['pending', 'approved', 'rejected'])
+//   - reason: string (required)
+//   - createdAt: string (required, ISO 8601)
+//
+// Collection: attendance
+// Document ID: {attendanceId}
+// Fields:
+//   - employeeId: string (required, immutable)
+//   - date: string (required, YYYY-MM-DD)
+//   - checkIn: string (required, ISO 8601)
+//   - checkOut: string (optional, ISO 8601)
+//   - status: string (required, enum: ['present', 'absent', 'late', 'half-day'])
+//
+// Collection: expenses
+// Document ID: {expenseId}
+// Fields:
+//   - employeeId: string (required, immutable)
+//   - amount: number (required, positive)
+//   - currency: string (required)
+//   - category: string (required)
+//   - date: string (required, YYYY-MM-DD)
+//   - description: string (required)
+//   - status: string (required, enum: ['pending', 'approved', 'rejected'])
+//   - receiptUrl: string (optional)
+//
+// Collection: reviews
+// Document ID: {reviewId}
+// Fields:
+//   - employeeId: string (required, immutable)
+//   - reviewerId: string (required, immutable)
+//   - period: string (required)
+//   - rating: number (required, 1-5)
+//   - feedback: string (required)
+//   - goals: string (optional)
+//   - date: string (required, ISO 8601)
+//
+// ===============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "shikhar.rs1998@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isManager() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/employees/$(request.auth.uid)).data.role in ['admin', 'manager']);
+    }
+
+    function isValidEmail(email) {
+      return email is string &&
+        email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidDateString(dateStr) {
+      return dateStr is string &&
+        dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidEmployee(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             isValidEmail(data.email) &&
+             data.role in ['admin', 'manager', 'employee'] &&
+             data.status in ['onboarding', 'active', 'inactive'] &&
+             isValidDateString(data.joinDate);
+    }
+
+    function isValidLeave(data) {
+      return data.employeeId is string &&
+             data.type in ['annual', 'sick', 'unpaid', 'other'] &&
+             isValidDateString(data.startDate) &&
+             isValidDateString(data.endDate) &&
+             data.status in ['pending', 'approved', 'rejected'] &&
+             data.reason is string && data.reason.size() < 1000;
+    }
+
+    function isValidAttendance(data) {
+      return data.employeeId is string &&
+             data.date.matches("^\\d{4}-\\d{2}-\\d{2}$") &&
+             isValidDateString(data.checkIn) &&
+             data.status in ['present', 'absent', 'late', 'half-day'];
+    }
+
+    function isValidExpense(data) {
+      return data.employeeId is string &&
+             data.amount is number && data.amount > 0 &&
+             data.status in ['pending', 'approved', 'rejected'] &&
+             data.description is string && data.description.size() < 1000;
+    }
+
+    function isValidReview(data) {
+      return data.employeeId is string &&
+             data.reviewerId is string &&
+             data.rating is number && data.rating >= 1 && data.rating <= 5 &&
+             data.feedback is string && data.feedback.size() < 5000;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /employees/{uid} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidEmployee(request.resource.data) &&
+                    ((isOwner(uid) && request.resource.data.role == 'employee') || isAdmin());
+      allow update: if isAuthenticated() && isValidEmployee(request.resource.data) &&
+                    ((isOwner(uid) && request.resource.data.role == resource.data.role) || isAdmin());
+    }
+
+    match /leaves/{leaveId} {
+      allow read: if isAuthenticated() && (isOwner(resource.data.employeeId) || isManager());
+      allow create: if isAuthenticated() && isOwner(request.resource.data.employeeId) && isValidLeave(request.resource.data);
+      allow update: if isAuthenticated() && (
+        (isOwner(resource.data.employeeId) && resource.data.status == 'pending' && isValidLeave(request.resource.data) && request.resource.data.status == 'pending') ||
+        (isManager() && hasOnlyAllowedFields(resource.data.keys()) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']))
+      );
+    }
+
+    match /attendance/{attendanceId} {
+      allow read: if isAuthenticated() && (isOwner(resource.data.employeeId) || isManager());
+      allow create: if isAuthenticated() && isOwner(request.resource.data.employeeId) && isValidAttendance(request.resource.data);
+      allow update: if isAuthenticated() && (isOwner(resource.data.employeeId) || isManager()) && isValidAttendance(request.resource.data);
+    }
+
+    match /expenses/{expenseId} {
+      allow read: if isAuthenticated() && (isOwner(resource.data.employeeId) || isManager());
+      allow create: if isAuthenticated() && isOwner(request.resource.data.employeeId) && isValidExpense(request.resource.data);
+      allow update: if isAuthenticated() && (
+        (isOwner(resource.data.employeeId) && resource.data.status == 'pending' && isValidExpense(request.resource.data) && request.resource.data.status == 'pending') ||
+        (isManager() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']))
+      );
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if isAuthenticated() && (isOwner(resource.data.employeeId) || isOwner(resource.data.reviewerId) || isAdmin());
+      allow create: if isAuthenticated() && isManager() && isOwner(request.resource.data.reviewerId) && isValidReview(request.resource.data);
+      allow update: if isAuthenticated() && isAdmin() && isValidReview(request.resource.data);
+    }
+
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

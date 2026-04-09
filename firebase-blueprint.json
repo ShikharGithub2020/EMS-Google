@@ -1,0 +1,87 @@
+{
+  "entities": {
+    "Employee": {
+      "title": "Employee",
+      "description": "Core employee profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["admin", "manager", "employee"] },
+        "department": { "type": "string" },
+        "status": { "type": "string", "enum": ["onboarding", "active", "inactive"] },
+        "joinDate": { "type": "string", "format": "date-time" },
+        "managerId": { "type": "string", "description": "UID of the manager" },
+        "photoURL": { "type": "string" }
+      },
+      "required": ["uid", "name", "email", "role", "status"]
+    },
+    "Leave": {
+      "title": "Leave Request",
+      "description": "Employee leave applications",
+      "type": "object",
+      "properties": {
+        "employeeId": { "type": "string" },
+        "type": { "type": "string", "enum": ["annual", "sick", "unpaid", "other"] },
+        "startDate": { "type": "string", "format": "date-time" },
+        "endDate": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "reason": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["employeeId", "type", "startDate", "endDate", "status"]
+    },
+    "Attendance": {
+      "title": "Attendance Record",
+      "description": "Daily check-in/out logs",
+      "type": "object",
+      "properties": {
+        "employeeId": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "checkIn": { "type": "string", "format": "date-time" },
+        "checkOut": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["present", "absent", "late", "half-day"] }
+      },
+      "required": ["employeeId", "date", "checkIn", "status"]
+    },
+    "Expense": {
+      "title": "Expense Claim",
+      "description": "Employee business expense tracking",
+      "type": "object",
+      "properties": {
+        "employeeId": { "type": "string" },
+        "amount": { "type": "number" },
+        "currency": { "type": "string", "default": "USD" },
+        "category": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "receiptUrl": { "type": "string" }
+      },
+      "required": ["employeeId", "amount", "category", "date", "status"]
+    },
+    "PerformanceReview": {
+      "title": "Performance Review",
+      "description": "Employee performance evaluations",
+      "type": "object",
+      "properties": {
+        "employeeId": { "type": "string" },
+        "reviewerId": { "type": "string" },
+        "period": { "type": "string", "description": "e.g., Q1 2024" },
+        "rating": { "type": "number" },
+        "feedback": { "type": "string" },
+        "goals": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" }
+      },
+      "required": ["employeeId", "reviewerId", "rating", "date"]
+    }
+  },
+  "firestore": {
+    "/employees/{uid}": { "schema": "Employee", "description": "Employee profiles" },
+    "/leaves/{leaveId}": { "schema": "Leave", "description": "Leave requests" },
+    "/attendance/{attendanceId}": { "schema": "Attendance", "description": "Attendance logs" },
+    "/expenses/{expenseId}": { "schema": "Expense", "description": "Expense claims" },
+    "/reviews/{reviewId}": { "schema": "PerformanceReview", "description": "Performance reviews" }
+  }
+}
