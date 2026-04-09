@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 import { Receipt, Plus, DollarSign, FileText } from 'lucide-react';
 
 export default function ExpenseTracking() {
-  const { user, isManager } = useAuth();
+  const { user, profile, isManager } = useAuth();
   const [expenses, setExpenses] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
@@ -40,6 +40,7 @@ export default function ExpenseTracking() {
     const formData = new FormData(e.target);
     const data = {
       employeeId: user.uid,
+      employeeName: profile?.name,
       amount: parseFloat(formData.get('amount') as string),
       category: formData.get('category'),
       date: formData.get('date'),
@@ -68,12 +69,14 @@ export default function ExpenseTracking() {
           <p className="text-neutral-500">Manage your business expenses and reimbursements.</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-neutral-900 hover:bg-neutral-800 gap-2">
-              <Plus size={18} />
-              <span>New Claim</span>
-            </Button>
-          </DialogTrigger>
+          <DialogTrigger 
+            render={
+              <Button className="bg-neutral-900 hover:bg-neutral-800 gap-2">
+                <Plus size={18} />
+                <span>New Claim</span>
+              </Button>
+            }
+          />
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Submit Expense Claim</DialogTitle>

@@ -34,12 +34,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setProfile(docSnap.data());
         } else {
           // New user - create basic profile
+          const isAdminEmail = user.email === 'shikhar.rs1998@gmail.com';
           const newProfile = {
             uid: user.uid,
             name: user.displayName || 'New Employee',
             email: user.email,
-            role: 'employee',
-            status: 'onboarding',
+            role: isAdminEmail ? 'admin' : 'employee',
+            status: isAdminEmail ? 'active' : 'onboarding',
             joinDate: new Date().toISOString(),
             photoURL: user.photoURL
           };

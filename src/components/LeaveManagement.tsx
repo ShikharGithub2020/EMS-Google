@@ -78,12 +78,14 @@ export default function LeaveManagement() {
           <p className="text-neutral-500">Manage your time off and view team availability.</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-neutral-900 hover:bg-neutral-800 gap-2">
-              <Plus size={18} />
-              <span>Request Leave</span>
-            </Button>
-          </DialogTrigger>
+          <DialogTrigger 
+            render={
+              <Button className="bg-neutral-900 hover:bg-neutral-800 gap-2">
+                <Plus size={18} />
+                <span>Request Leave</span>
+              </Button>
+            }
+          />
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>New Leave Request</DialogTitle>

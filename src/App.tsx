@@ -20,7 +20,8 @@ import {
   X,
   UserCircle,
   ChevronRight,
-  Briefcase
+  Briefcase,
+  CheckCircle2
 } from 'lucide-react';
 import { auth, googleProvider, browserPopupRedirectResolver } from './lib/firebase';
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
@@ -37,6 +38,9 @@ import Attendance from './components/Attendance';
 import ExpenseTracking from './components/ExpenseTracking';
 import PerformanceReviews from './components/PerformanceReviews';
 import AdminPanel from './components/AdminPanel';
+import Approvals from './components/Approvals';
+import Directory from './components/Directory';
+import ProfilePage from './components/Profile';
 
 function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: any) {
   const { profile, isAdmin, isManager } = useAuth();
@@ -47,10 +51,17 @@ function Sidebar({ activeTab, setActiveTab, isOpen, setIsOpen }: any) {
     { id: 'leaves', label: 'Leaves', icon: Calendar },
     { id: 'expenses', label: 'Expenses', icon: Receipt },
     { id: 'reviews', label: 'Performance', icon: Star },
+    { id: 'profile', label: 'My Profile', icon: UserCircle },
   ];
 
+  if (isManager) {
+    // Add Approvals and Directory for Managers/Admins
+    menuItems.splice(5, 0, { id: 'approvals', label: 'Approvals', icon: CheckCircle2 });
+    menuItems.splice(6, 0, { id: 'directory', label: 'Directory', icon: Users });
+  }
+
   if (isAdmin) {
-    menuItems.push({ id: 'admin', label: 'Admin Panel', icon: Users });
+    menuItems.push({ id: 'admin', label: 'Admin Panel', icon: Settings });
   }
 
   return (
@@ -203,6 +214,9 @@ function MainApp() {
       case 'leaves': return <LeaveManagement />;
       case 'expenses': return <ExpenseTracking />;
       case 'reviews': return <PerformanceReviews />;
+      case 'approvals': return <Approvals />;
+      case 'directory': return <Directory />;
+      case 'profile': return <ProfilePage />;
       case 'admin': return <AdminPanel />;
       default: return <Dashboard />;
     }
